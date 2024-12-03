@@ -391,8 +391,48 @@ impl TryFrom<u32> for Instruction {
         
         use BaseOpcode::*;
         Ok(match base_opcode {
-            Lui   => Instruction::Lui(UType::try_from(value)?),
-            AuiPc => Instruction::AuiPc(UType::try_from(value)?),
+            Lui    => Instruction::Lui(UType::try_from(value)?),
+            AuiPc  => Instruction::AuiPc(UType::try_from(value)?),
+            Jal    => Instruction::Jal(JType::try_from(value)?),
+            Jalr   => Instruction::Jalr(IType::try_from(value)?),
+            Branch => {
+                let inner = BType::try_from(value)?;
+                match inner.funct3 {
+                    0b000 => Instruction::Beq(inner),
+                    0b001 => Instruction::Bne(inner),
+                    0b100 => Instruction::Blt(inner),
+                    0b101 => Instruction::Bge(inner),
+                    0b110 => Instruction::Bltu(inner),
+                    0b111 => Instruction::Bgeu(inner),
+                    _ => unreachable!(),
+                }
+            },
+            Load => {
+                let inner = IType::try_from(value)?;
+                match inner.funct3 {
+                    0b000 => Instruction::Lb(inner),
+                    0b001 => Instruction::Lh(inner),
+                    0b010 => Instruction::Lw(inner),
+                    0b100 => Instruction::Lbu(inner),
+                    0b101 => Instruction::Lhu(inner),
+                    _ => unreachable!(),
+                }
+            },
+            Store => {
+                let inner = SType::try_from(value)?;
+                match inner.funct3 {
+                    0b000 => Instruction::Sb(inner),
+                    0b001 => Instruction::Sh(inner),
+                    0b010 => Instruction::Sw(inner),
+                    _ => unreachable!(),
+                }
+            },
+            OpImm => {
+                let inner = IType::try_from(value)?;
+                match inner.funct3 {
+                    
+                }
+            }
         })
     }
 }
