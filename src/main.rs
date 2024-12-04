@@ -404,7 +404,7 @@ impl TryFrom<u32> for Instruction {
                     0b101 => Instruction::Bge(inner),
                     0b110 => Instruction::Bltu(inner),
                     0b111 => Instruction::Bgeu(inner),
-                    _ => unreachable!(),
+                    _ => Instruction::Nop,
                 }
             },
             Load => {
@@ -415,24 +415,59 @@ impl TryFrom<u32> for Instruction {
                     0b010 => Instruction::Lw(inner),
                     0b100 => Instruction::Lbu(inner),
                     0b101 => Instruction::Lhu(inner),
-                    _ => unreachable!(),
+                    _ => Instruction::Nop,
                 }
             },
             Store => {
-                let inner = SType::try_from(value)?;
+                let inner: SType = SType::try_from(value)?;
                 match inner.funct3 {
                     0b000 => Instruction::Sb(inner),
                     0b001 => Instruction::Sh(inner),
                     0b010 => Instruction::Sw(inner),
-                    _ => unreachable!(),
+                    _ => Instruction::Nop,
                 }
             },
             OpImm => {
                 let inner = IType::try_from(value)?;
                 match inner.funct3 {
+                    0b000 => Instruction::Addi(inner),
+                    0b010 => Instruction::Slti(inner),
+                    0b011 => Instruction::Sltiu(inner),
+                    0b100 => Instruction::Xori(inner),
+                    0b110 => Instruction::Ori(inner),
+                    0b111 => Instruction::Andi(inner),
                     
+                    // Ah shit, here we go again....
+                    0b001 | 0b101 => {
+                        let inner = RType::try_from(value)?;
+                        match (inner.funct3, inner.funct7) {
+                            (0b001, 0b0000000) => Instruction::Slli(inner),
+                            (0b101, 0b0000000) => Instruction::Srli(inner),
+                            (0b101, 0b0100000) => Instruction::Srai(inner),
+                            _ => Instruction::Nop,
+                        }
+                    },
+
+                    _ => unreachable!(), // as we have 3-bit value here
+                }
+            },
+            Op => {
+                let inner = RType::try_from(value)?;
+                match (inner.funct3, inner.funct7) {
+                    (0b000, 0b0000000) => Instruction::Add(inner),
+                    (0b000, 0b0100000) => Instruction::Sub(inner),
+                    (0b001, 0b0000000) => Instruction::Sll(inner),
+                    (0b010, 0b0000000) => Instruction::Slt(inner),
+                    (0b011, 0b0000000) => Instruction::Sltu(inner),
+                    (0b100, 0b0000000) => Instruction::Xor(inner),
+                    (0b101, 0b0000000) => Instruction::Srl(inner),
+                    (0b101, 0b0100000) => Instruction::Sra(inner),
+                    (0b110, 0b0000000) => Instruction::Or(inner),
+                    (0b111, 0b0000000) => Instruction::And(inner),
+                    _ => Instruction::Nop,
                 }
             }
+            _ => Instruction::Nop,
         })
     }
 }
