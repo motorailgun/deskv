@@ -541,22 +541,53 @@ mod tests {
 
         let test2_function_section = &data[test2_start_addr..test2_end_addr];
 
-        let first_chunk = u32::from_le_bytes(
-            test2_function_section
-                .chunks(4)
-                .next()
-                .unwrap()
-                .try_into()
-                .unwrap(),
-        );
+        let expected_insts = [
+            Instruction::Addi(crate::IType {
+                rd: 3,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 2,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 13,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 14,
+                rs1: 13,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 7,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Bne(crate::BType {
+                opcode: crate::BaseOpcode::Branch,
+                imm: 644,
+                funct3: 0b001,
+                rs1: 14,
+                rs2: 7,
+            }),
+        ];
 
-        assert_eq!(
-            Instruction::try_from(first_chunk).unwrap(),
-            Instruction::Lui(crate::UType {
-                opcode: crate::BaseOpcode::Lui,
-                rd: 0,
-                imm: 0
+        test2_function_section
+            .chunks(4)
+            .map(|inst| {
+                let num = u32::from_le_bytes(inst.try_into().unwrap());
+                Instruction::try_from(num).unwrap()
             })
-        )
+            .zip(expected_insts.iter())
+            .for_each(|(actual, expected)| {
+                assert_eq!(actual, *expected);
+            });
     }
 }
