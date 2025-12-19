@@ -212,8 +212,8 @@ impl TryFrom<u32> for BType {
         let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
 
         // TODO: this should be rewritten I guess, I need to figure out what
-        // imm[12|10:5] and imm[12|10:5] stands for
-        let imm = ((value & imm_hi_mask) >> 20) | (value & imm_lo_mask >> 7);
+        // imm[12|10:5] and imm[4:1|11] stands for
+        let imm = ((value & imm_hi_mask) >> 20) | ((value & imm_lo_mask) >> 7);
 
         Ok(BType {
             // 7 bits
@@ -523,7 +523,6 @@ mod tests {
         );
     }
 
-    // TODO: this test doesn't pass
     #[test]
     fn test_parse_addi() {
         let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join("rv64ui-p-addi"))
