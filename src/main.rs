@@ -3,6 +3,18 @@ use num_traits::FromPrimitive;
 
 type Register = u32;
 
+#[derive(Debug, Clone, Copy)]
+struct OrigBitWidth(u32);
+
+fn sign_extend(src: u64, bit_width: OrigBitWidth) -> u64 {
+    let msb_mask = 2u64.pow(bit_width.0 - 1);
+    if src & msb_mask > 1 {
+        std::u64::MAX - ((msb_mask << 1) - 1) | src
+    } else {
+        !(std::u64::MAX - ((msb_mask << 1) - 1)) & src
+    }
+}
+
 #[derive(Clone)]
 struct Cpu {
     registers: [Register; 32],
@@ -63,7 +75,7 @@ enum TypeDecodeError {
     InvalidInstructionError,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct RType {
     opcode: BaseOpcode,
     rd: u8,
@@ -101,7 +113,7 @@ impl TryFrom<u32> for RType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct IType {
     opcode: BaseOpcode,
     rd: u8,
@@ -135,7 +147,7 @@ impl TryFrom<u32> for IType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct SType {
     opcode: BaseOpcode,
     imm: u16,
@@ -176,7 +188,7 @@ impl TryFrom<u32> for SType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct BType {
     opcode: BaseOpcode,
     imm: u16,
@@ -216,7 +228,7 @@ impl TryFrom<u32> for BType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct UType {
     opcode: BaseOpcode,
     rd: u8,
@@ -239,7 +251,7 @@ impl TryFrom<u32> for UType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct JType {
     opcode: BaseOpcode,
     rd: u8,
@@ -263,7 +275,7 @@ impl TryFrom<u32> for JType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(u8)]
 enum Instruction {
     Lui(UType),
@@ -322,7 +334,7 @@ enum Instruction {
 /// only when [4:2] = 0b111 they are NON-32bit instructions.
 /// Here I assume all instructions are 32-bit length
 /// as I'm writing an RV32I emulator.
-#[derive(Debug, Clone, FromPrimitive)]
+#[derive(Debug, Clone, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
 enum BaseOpcode {
     // [6:5] = 0b00
@@ -478,4 +490,41 @@ fn main() {
     let tape = vec![0xfff40413, 0x00008067];
     let parsed_tape = parse_opcodes(&tape);
     dbg!(parsed_tape);
+}
+
+#[cfg(test)]
+mod tests {
+    use goblin::elf::Elf;
+    use crate::{Instruction, OrigBitWidth, sign_extend};
+
+    const RVTESTS_DIR: &str = "riscv-tests/isa/";
+
+    #[test]
+    fn test_sign_extend() {
+        let src = 0b0001_0000;
+        let bw = OrigBitWidth(5);
+        assert_eq!(sign_extend(src, bw), 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11110000);
+
+        let src = 0b0001_0000;
+        let bw = OrigBitWidth(6);
+        assert_eq!(sign_extend(src, bw), 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000);
+    }
+
+    // TODO: this test doesn't pass
+    #[test]
+    fn test_parse_add() {
+        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join("rv64ui-p-add")).expect("failed to open rv64ui-p-add");
+        let elf = Elf::parse(&data).expect("failed to parse elf");
+        let text_init_section = elf.section_headers.iter().find(|section_header| {
+            elf.shdr_strtab.get_at(section_header.sh_name) == Some(".text.init")
+        }).expect("unable to find `.text.init` section");
+        let test2_start_addr = (text_init_section.sh_offset + 0x190) as usize;
+        let test2_end_addr = (test2_start_addr + 5 * 4) as usize;
+        
+        let test2_function_section = &data[test2_start_addr..test2_end_addr];
+
+        let first_chunk = u32::from_le_bytes(test2_function_section.chunks(4).next().unwrap().try_into().unwrap());
+
+        assert_eq!(Instruction::try_from(first_chunk).unwrap(), Instruction::Lui(crate::UType { opcode: crate::BaseOpcode::Lui, rd: 0, imm: 0 }))
+    }
 }
