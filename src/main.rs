@@ -525,9 +525,9 @@ mod tests {
 
     // TODO: this test doesn't pass
     #[test]
-    fn test_parse_add() {
-        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join("rv64ui-p-add"))
-            .expect("failed to open rv64ui-p-add");
+    fn test_parse_addi() {
+        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join("rv64ui-p-addi"))
+            .expect("failed to open rv64ui-p-addi");
         let elf = Elf::parse(&data).expect("failed to parse elf");
         let text_init_section = elf
             .section_headers
