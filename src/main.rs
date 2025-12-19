@@ -9,7 +9,7 @@ struct OrigBitWidth(u32);
 fn sign_extend(src: u64, bit_width: OrigBitWidth) -> u64 {
     let msb_mask = 2u64.pow(bit_width.0 - 1);
     if src & msb_mask > 1 {
-        std::u64::MAX - ((msb_mask << 1) - 1) | src
+        (std::u64::MAX - ((msb_mask << 1) - 1)) | src
     } else {
         !(std::u64::MAX - ((msb_mask << 1) - 1)) & src
     }
@@ -90,15 +90,16 @@ impl TryFrom<u32> for RType {
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let funct7_mask: u32 = 0b1111_1110_0000_0000_0000_0000_0000_0000;
-        let rs2_mask: u32    = 0b0000_0001_1111_0000_0000_0000_0000_0000;
-        let rs1_mask: u32    = 0b0000_0000_0000_1111_1000_0000_0000_0000;
+        let rs2_mask: u32 = 0b0000_0001_1111_0000_0000_0000_0000_0000;
+        let rs1_mask: u32 = 0b0000_0000_0000_1111_1000_0000_0000_0000;
         let funct3_mask: u32 = 0b0000_0000_0000_0000_0111_0000_0000_0000;
-        let rd_mask: u32     = 0b0000_0000_0000_0000_0000_1111_1000_0000;
+        let rd_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
         let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
 
         Ok(RType {
             // 7 bits
-            opcode: BaseOpcode::from_u32(opcode_mask & value).ok_or(Self::Error::InvalidInstructionError)?,
+            opcode: BaseOpcode::from_u32(opcode_mask & value)
+                .ok_or(Self::Error::InvalidInstructionError)?,
             // 5 bits
             rd: ((rd_mask & value) >> 7) as u8,
             // 3 bits
@@ -126,15 +127,16 @@ impl TryFrom<u32> for IType {
     type Error = TypeDecodeError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        let imm_mask: u32    = 0b1111_1111_1111_0000_0000_0000_0000_0000;
-        let rs1_mask: u32    = 0b0000_0000_0000_1111_1000_0000_0000_0000;
+        let imm_mask: u32 = 0b1111_1111_1111_0000_0000_0000_0000_0000;
+        let rs1_mask: u32 = 0b0000_0000_0000_1111_1000_0000_0000_0000;
         let funct3_mask: u32 = 0b0000_0000_0000_0000_0111_0000_0000_0000;
-        let rd_mask: u32     = 0b0000_0000_0000_0000_0000_1111_1000_0000;
+        let rd_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
         let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
 
         Ok(IType {
             // 7 bits
-            opcode: BaseOpcode::from_u32(opcode_mask & value).ok_or(Self::Error::InvalidInstructionError)?,
+            opcode: BaseOpcode::from_u32(opcode_mask & value)
+                .ok_or(Self::Error::InvalidInstructionError)?,
             // 5 bits
             rd: ((rd_mask & value) >> 7) as u8,
             // 3 bits
@@ -161,8 +163,8 @@ impl TryFrom<u32> for SType {
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let imm_hi_mask: u32 = 0b1111_1110_0000_0000_0000_0000_0000_0000;
-        let rs2_mask: u32    = 0b0000_0001_1111_0000_0000_0000_0000_0000;
-        let rs1_mask: u32    = 0b0000_0000_0000_1111_1000_0000_0000_0000;
+        let rs2_mask: u32 = 0b0000_0001_1111_0000_0000_0000_0000_0000;
+        let rs1_mask: u32 = 0b0000_0000_0000_1111_1000_0000_0000_0000;
         let funct3_mask: u32 = 0b0000_0000_0000_0000_0111_0000_0000_0000;
         let imm_lo_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
         let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
@@ -170,11 +172,12 @@ impl TryFrom<u32> for SType {
         // higher part of immediate is only last 7 bits thus shifting 25 bits to left
         // extracts the part, but as other bits are zero-cleared, it can be simply done by
         // shifting 20 bits to left and add lower 5 bits
-        let imm = ((value & imm_hi_mask) >> 20) | ((value & imm_lo_mask >> 7));
+        let imm = ((value & imm_hi_mask) >> 20) | (value & imm_lo_mask >> 7);
 
         Ok(SType {
             // 7 bits
-            opcode: BaseOpcode::from_u32(opcode_mask & value).ok_or(Self::Error::InvalidInstructionError)?,
+            opcode: BaseOpcode::from_u32(opcode_mask & value)
+                .ok_or(Self::Error::InvalidInstructionError)?,
             // 5 bits (imm_lo)
             // 3 bits
             funct3: ((funct3_mask & value) >> 12) as u8,
@@ -202,19 +205,20 @@ impl TryFrom<u32> for BType {
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let imm_hi_mask: u32 = 0b1111_1110_0000_0000_0000_0000_0000_0000;
-        let rs2_mask: u32    = 0b0000_0001_1111_0000_0000_0000_0000_0000;
-        let rs1_mask: u32    = 0b0000_0000_0000_1111_1000_0000_0000_0000;
+        let rs2_mask: u32 = 0b0000_0001_1111_0000_0000_0000_0000_0000;
+        let rs1_mask: u32 = 0b0000_0000_0000_1111_1000_0000_0000_0000;
         let funct3_mask: u32 = 0b0000_0000_0000_0000_0111_0000_0000_0000;
         let imm_lo_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
         let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
 
         // TODO: this should be rewritten I guess, I need to figure out what
         // imm[12|10:5] and imm[12|10:5] stands for
-        let imm = ((value & imm_hi_mask) >> 20) | ((value & imm_lo_mask >> 7));
+        let imm = ((value & imm_hi_mask) >> 20) | (value & imm_lo_mask >> 7);
 
         Ok(BType {
             // 7 bits
-            opcode: BaseOpcode::from_u32(opcode_mask & value).ok_or(Self::Error::InvalidInstructionError)?,
+            opcode: BaseOpcode::from_u32(opcode_mask & value)
+                .ok_or(Self::Error::InvalidInstructionError)?,
             // 5 bits (imm_lo)
             // 3 bits
             funct3: ((funct3_mask & value) >> 12) as u8,
@@ -239,14 +243,15 @@ impl TryFrom<u32> for UType {
     type Error = TypeDecodeError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        let imm_mask: u32    = 0b1111_1111_1111_1111_1111_0000_0000_0000;
-        let rd_mask: u32     = 0b0000_0000_0000_0000_0000_1111_1000_0000;
+        let imm_mask: u32 = 0b1111_1111_1111_1111_1111_0000_0000_0000;
+        let rd_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
         let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
 
         Ok(UType {
-            opcode: BaseOpcode::from_u32(opcode_mask & value).ok_or(Self::Error::InvalidInstructionError)?,
+            opcode: BaseOpcode::from_u32(opcode_mask & value)
+                .ok_or(Self::Error::InvalidInstructionError)?,
             rd: ((rd_mask & value) >> 7) as u8,
-            imm: imm_mask & value
+            imm: imm_mask & value,
         })
     }
 }
@@ -262,15 +267,16 @@ impl TryFrom<u32> for JType {
     type Error = TypeDecodeError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        let imm_mask: u32    = 0b1111_1111_1111_1111_1111_0000_0000_0000;
-        let rd_mask: u32     = 0b0000_0000_0000_0000_0000_1111_1000_0000;
+        let imm_mask: u32 = 0b1111_1111_1111_1111_1111_0000_0000_0000;
+        let rd_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
         let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
 
         Ok(JType {
-            opcode: BaseOpcode::from_u32(opcode_mask & value).ok_or(Self::Error::InvalidInstructionError)?,
+            opcode: BaseOpcode::from_u32(opcode_mask & value)
+                .ok_or(Self::Error::InvalidInstructionError)?,
             rd: ((rd_mask & value) >> 7) as u8,
             // TODO: I need to figure out what imm[20|10:1|11|19:12] stands for
-            imm: imm_mask & value
+            imm: imm_mask & value,
         })
     }
 }
@@ -338,35 +344,35 @@ enum Instruction {
 #[repr(u8)]
 enum BaseOpcode {
     // [6:5] = 0b00
-    Load    = 0b0000011,
-    LoadFp  = 0b0000111,
+    Load = 0b0000011,
+    LoadFp = 0b0000111,
     MiscMem = 0b0001111,
-    OpImm   = 0b0010011,
-    AuiPc   = 0b0010111,
+    OpImm = 0b0010011,
+    AuiPc = 0b0010111,
     OpImm32 = 0b0011011,
 
     // [6:5] = 0b01
-    Store   = 0b0100011,
+    Store = 0b0100011,
     StoreFp = 0b0100111,
-    Amo     = 0b0101111,
-    Op      = 0b0110011,
-    Lui     = 0b0110111,
-    Op32    = 0b0111011,
+    Amo = 0b0101111,
+    Op = 0b0110011,
+    Lui = 0b0110111,
+    Op32 = 0b0111011,
 
     // [6:5] = 0b10
-    MAdd    = 0b1000011,
-    MSub    = 0b1000111,
-    NMSub   = 0b1001011,
-    NMAdd   = 0b1001111,
-    OpFp    = 0b1010011,
-    OpV     = 0b1010111,
+    MAdd = 0b1000011,
+    MSub = 0b1000111,
+    NMSub = 0b1001011,
+    NMAdd = 0b1001111,
+    OpFp = 0b1010011,
+    OpV = 0b1010111,
 
     // [6:5] = 0b11
-    Branch  = 0b1100011,
-    Jalr    = 0b1100111,
-    Jal     = 0b1101111,
-    System  = 0b1110011,
-    OpVE    = 0b1110111,
+    Branch = 0b1100011,
+    Jalr = 0b1100111,
+    Jal = 0b1101111,
+    System = 0b1110011,
+    OpVE = 0b1110111,
 }
 
 fn parse_opcodes(tape: &[u32]) -> Vec<String> {
@@ -392,21 +398,22 @@ impl From<TypeDecodeError> for ParseInstructionError {
     fn from(_value: TypeDecodeError) -> Self {
         ParseInstructionError::GenericError
     }
-} 
+}
 
 impl TryFrom<u32> for Instruction {
     type Error = ParseInstructionError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let opcode_mask = 0b1111111u8;
-        let base_opcode = BaseOpcode::from_u8(opcode_mask & value as u8).ok_or(ParseInstructionError::UnknownOpcodeError)?;
-        
+        let base_opcode = BaseOpcode::from_u8(opcode_mask & value as u8)
+            .ok_or(ParseInstructionError::UnknownOpcodeError)?;
+
         use BaseOpcode::*;
         Ok(match base_opcode {
-            Lui    => Instruction::Lui(UType::try_from(value)?),
-            AuiPc  => Instruction::AuiPc(UType::try_from(value)?),
-            Jal    => Instruction::Jal(JType::try_from(value)?),
-            Jalr   => Instruction::Jalr(IType::try_from(value)?),
+            Lui => Instruction::Lui(UType::try_from(value)?),
+            AuiPc => Instruction::AuiPc(UType::try_from(value)?),
+            Jal => Instruction::Jal(JType::try_from(value)?),
+            Jalr => Instruction::Jalr(IType::try_from(value)?),
             Branch => {
                 let inner = BType::try_from(value)?;
                 match inner.funct3 {
@@ -418,7 +425,7 @@ impl TryFrom<u32> for Instruction {
                     0b111 => Instruction::Bgeu(inner),
                     _ => Instruction::Nop,
                 }
-            },
+            }
             Load => {
                 let inner = IType::try_from(value)?;
                 match inner.funct3 {
@@ -429,7 +436,7 @@ impl TryFrom<u32> for Instruction {
                     0b101 => Instruction::Lhu(inner),
                     _ => Instruction::Nop,
                 }
-            },
+            }
             Store => {
                 let inner: SType = SType::try_from(value)?;
                 match inner.funct3 {
@@ -438,7 +445,7 @@ impl TryFrom<u32> for Instruction {
                     0b010 => Instruction::Sw(inner),
                     _ => Instruction::Nop,
                 }
-            },
+            }
             OpImm => {
                 let inner = IType::try_from(value)?;
                 match inner.funct3 {
@@ -448,7 +455,7 @@ impl TryFrom<u32> for Instruction {
                     0b100 => Instruction::Xori(inner),
                     0b110 => Instruction::Ori(inner),
                     0b111 => Instruction::Andi(inner),
-                    
+
                     // Ah shit, here we go again....
                     0b001 | 0b101 => {
                         let inner = RType::try_from(value)?;
@@ -458,11 +465,11 @@ impl TryFrom<u32> for Instruction {
                             (0b101, 0b0100000) => Instruction::Srai(inner),
                             _ => Instruction::Nop,
                         }
-                    },
+                    }
 
                     _ => unreachable!(), // as we have 3-bit value here
                 }
-            },
+            }
             Op => {
                 let inner = RType::try_from(value)?;
                 match (inner.funct3, inner.funct7) {
@@ -494,8 +501,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use goblin::elf::Elf;
     use crate::{Instruction, OrigBitWidth, sign_extend};
+    use goblin::elf::Elf;
 
     const RVTESTS_DIR: &str = "riscv-tests/isa/";
 
@@ -503,28 +510,53 @@ mod tests {
     fn test_sign_extend() {
         let src = 0b0001_0000;
         let bw = OrigBitWidth(5);
-        assert_eq!(sign_extend(src, bw), 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11110000);
+        assert_eq!(
+            sign_extend(src, bw),
+            0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11110000
+        );
 
         let src = 0b0001_0000;
         let bw = OrigBitWidth(6);
-        assert_eq!(sign_extend(src, bw), 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000);
+        assert_eq!(
+            sign_extend(src, bw),
+            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000
+        );
     }
 
     // TODO: this test doesn't pass
     #[test]
     fn test_parse_add() {
-        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join("rv64ui-p-add")).expect("failed to open rv64ui-p-add");
+        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join("rv64ui-p-add"))
+            .expect("failed to open rv64ui-p-add");
         let elf = Elf::parse(&data).expect("failed to parse elf");
-        let text_init_section = elf.section_headers.iter().find(|section_header| {
-            elf.shdr_strtab.get_at(section_header.sh_name) == Some(".text.init")
-        }).expect("unable to find `.text.init` section");
+        let text_init_section = elf
+            .section_headers
+            .iter()
+            .find(|section_header| {
+                elf.shdr_strtab.get_at(section_header.sh_name) == Some(".text.init")
+            })
+            .expect("unable to find `.text.init` section");
         let test2_start_addr = (text_init_section.sh_offset + 0x190) as usize;
         let test2_end_addr = (test2_start_addr + 5 * 4) as usize;
-        
+
         let test2_function_section = &data[test2_start_addr..test2_end_addr];
 
-        let first_chunk = u32::from_le_bytes(test2_function_section.chunks(4).next().unwrap().try_into().unwrap());
+        let first_chunk = u32::from_le_bytes(
+            test2_function_section
+                .chunks(4)
+                .next()
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        );
 
-        assert_eq!(Instruction::try_from(first_chunk).unwrap(), Instruction::Lui(crate::UType { opcode: crate::BaseOpcode::Lui, rd: 0, imm: 0 }))
+        assert_eq!(
+            Instruction::try_from(first_chunk).unwrap(),
+            Instruction::Lui(crate::UType {
+                opcode: crate::BaseOpcode::Lui,
+                rd: 0,
+                imm: 0
+            })
+        )
     }
 }
