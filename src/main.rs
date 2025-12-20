@@ -656,4 +656,66 @@ mod tests {
                 assert_eq!(actual, *expected);
             });
     }
+
+    #[test]
+    fn test_parse_sub() {
+        let test2_function_section = get_insts_from_elf("rv64ui-p-sub", 0x190, 6).expect("error getting section from elf");
+
+        let expected_insts = [
+            Instruction::Addi(crate::IType {
+                rd: 3,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 2,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 11,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 12,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Sub(crate::RType {
+                funct7: 0b0100000,
+                rd: 14,
+                rs1: 11,
+                funct3: 0b000,
+                rs2: 12,
+                opcode: crate::BaseOpcode::Op,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 7,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Bne(crate::BType {
+                opcode: crate::BaseOpcode::Branch,
+                imm: 1212,
+                funct3: 0b001,
+                rs1: 14,
+                rs2: 7,
+            }),
+        ];
+
+        test2_function_section
+            .chunks(4)
+            .map(|inst| {
+                let num = u32::from_le_bytes(inst.try_into().unwrap());
+                Instruction::try_from(num).unwrap()
+            })
+            .zip(expected_insts.iter())
+            .for_each(|(actual, expected)| {
+                assert_eq!(actual, *expected);
+            });
+    }
 }
