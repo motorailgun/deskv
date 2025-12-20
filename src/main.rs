@@ -502,9 +502,27 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use crate::{Instruction, OrigBitWidth, sign_extend};
+    use anyhow::Context;
     use goblin::elf::Elf;
 
     const RVTESTS_DIR: &str = "riscv-tests/isa/";
+
+    fn get_insts_from_elf(name: &str, begin_addr: usize, count: usize) -> anyhow::Result<Vec<u8>> {
+        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join(name)).with_context(|| format!("failed to read from specified file: {name}"))?;
+        let elf = Elf::parse(&data).with_context(|| "failed to parse elf")?;
+        let text_init_section = elf
+            .section_headers
+            .iter()
+            .find(|section_header| {
+                elf.shdr_strtab.get_at(section_header.sh_name) == Some(".text.init")
+            })
+            .with_context(|| "unable to find `.text.init` section")?;
+
+        let start_addr = text_init_section.sh_offset as usize + begin_addr;
+        let end_addr = start_addr + 4 * count;
+
+        Ok(data[start_addr..end_addr].to_owned())
+    }
 
     #[test]
     fn test_sign_extend() {
@@ -525,20 +543,7 @@ mod tests {
 
     #[test]
     fn test_parse_addi() {
-        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join("rv64ui-p-addi"))
-            .expect("failed to open rv64ui-p-addi");
-        let elf = Elf::parse(&data).expect("failed to parse elf");
-        let text_init_section = elf
-            .section_headers
-            .iter()
-            .find(|section_header| {
-                elf.shdr_strtab.get_at(section_header.sh_name) == Some(".text.init")
-            })
-            .expect("unable to find `.text.init` section");
-        let test2_start_addr = (text_init_section.sh_offset + 0x190) as usize;
-        let test2_end_addr = (test2_start_addr + 5 * 4) as usize;
-
-        let test2_function_section = &data[test2_start_addr..test2_end_addr];
+        let test2_function_section = get_insts_from_elf("rv64ui-p-addi", 0x190, 5).expect("error getting section from elf");
 
         let expected_insts = [
             Instruction::Addi(crate::IType {

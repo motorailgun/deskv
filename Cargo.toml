@@ -11,3 +11,4 @@ thiserror = "2.0.3"
 
 [dev-dependencies]
 goblin = "0.10"
+anyhow = "1.0"
