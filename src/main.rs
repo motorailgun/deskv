@@ -508,7 +508,8 @@ mod tests {
     const RVTESTS_DIR: &str = "riscv-tests/isa/";
 
     fn get_insts_from_elf(name: &str, begin_addr: usize, count: usize) -> anyhow::Result<Vec<u8>> {
-        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join(name)).with_context(|| format!("failed to read from specified file: {name}"))?;
+        let data = std::fs::read(std::path::PathBuf::from(RVTESTS_DIR).join(name))
+            .with_context(|| format!("failed to read from specified file: {name}"))?;
         let elf = Elf::parse(&data).with_context(|| "failed to parse elf")?;
         let text_init_section = elf
             .section_headers
@@ -543,7 +544,8 @@ mod tests {
 
     #[test]
     fn test_parse_addi() {
-        let test2_function_section = get_insts_from_elf("rv64ui-p-addi", 0x190, 5).expect("error getting section from elf");
+        let test2_function_section =
+            get_insts_from_elf("rv64ui-p-addi", 0x190, 5).expect("error getting section from elf");
 
         let expected_insts = [
             Instruction::Addi(crate::IType {
@@ -597,7 +599,8 @@ mod tests {
 
     #[test]
     fn test_parse_add() {
-        let test2_function_section = get_insts_from_elf("rv64ui-p-add", 0x190, 6).expect("error getting section from elf");
+        let test2_function_section =
+            get_insts_from_elf("rv64ui-p-add", 0x190, 6).expect("error getting section from elf");
 
         let expected_insts = [
             Instruction::Addi(crate::IType {
@@ -659,7 +662,8 @@ mod tests {
 
     #[test]
     fn test_parse_sub() {
-        let test2_function_section = get_insts_from_elf("rv64ui-p-sub", 0x190, 6).expect("error getting section from elf");
+        let test2_function_section =
+            get_insts_from_elf("rv64ui-p-sub", 0x190, 6).expect("error getting section from elf");
 
         let expected_insts = [
             Instruction::Addi(crate::IType {
