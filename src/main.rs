@@ -206,6 +206,8 @@ impl TryFrom<u32> for BType {
     type Error = TypeDecodeError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
+        // TODO: this is bugged
+        // This mask doesn't implement corret masks as written below
         let imm_hi_mask: u32 = 0b1111_1110_0000_0000_0000_0000_0000_0000;
         let rs2_mask: u32 = 0b0000_0001_1111_0000_0000_0000_0000_0000;
         let rs1_mask: u32 = 0b0000_0000_0000_1111_1000_0000_0000_0000;
@@ -262,23 +264,33 @@ impl TryFrom<u32> for UType {
 struct JType {
     opcode: BaseOpcode,
     rd: u8,
-    imm: u32,
+    imm: i64,
 }
 
 impl TryFrom<u32> for JType {
     type Error = TypeDecodeError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        let imm_mask: u32 = 0b1111_1111_1111_1111_1111_0000_0000_0000;
-        let rd_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
-        let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
+        let imm_20_mask: u32    = 0b1000_0000_0000_0000_0000_0000_0000_0000;
+        let imm_10_1_mask: u32  = 0b0111_1111_1110_0000_0000_0000_0000_0000;
+        let imm_11_mask: u32    = 0b0000_0000_0001_0000_0000_0000_0000_0000;
+        let imm_19_12_mask: u32 = 0b0000_0000_0000_1111_1111_0000_0000_0000;
+        
+        let rd_mask: u32        = 0b0000_0000_0000_0000_0000_1111_1000_0000;
+        let opcode_mask: u32    = 0b0000_0000_0000_0000_0000_0000_0111_1111;
+
+        let imm = (imm_20_mask & value) >> 11 |
+                  (imm_19_12_mask & value) |
+                  (imm_11_mask & value) >> 9 |
+                  (imm_10_1_mask & value) >> 20;
+
 
         Ok(JType {
             opcode: BaseOpcode::from_u32(opcode_mask & value)
                 .ok_or(Self::Error::InvalidInstructionError)?,
             rd: ((rd_mask & value) >> 7) as u8,
             // TODO: I need to figure out what imm[20|10:1|11|19:12] stands for
-            imm: imm_mask & value,
+            imm: sign_extend(imm as u64, OrigBitWidth(20)),
         })
     }
 }
@@ -852,7 +864,7 @@ mod tests {
             }),
             Instruction::Jal(crate::JType {
                 rd: 0,
-                imm: 0x00800000,
+                imm: 8,
                 opcode: crate::BaseOpcode::Jal,
             }),
             Instruction::Addi(crate::IType {
