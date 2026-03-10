@@ -154,7 +154,7 @@ impl TryFrom<u32> for IType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SType {
     opcode: BaseOpcode,
-    imm: u16,
+    imm: i64,
     funct3: u8,
     rs1: u8,
     rs2: u8,
@@ -174,7 +174,7 @@ impl TryFrom<u32> for SType {
         // higher part of immediate is only last 7 bits thus shifting 25 bits to left
         // extracts the part, but as other bits are zero-cleared, it can be simply done by
         // shifting 20 bits to left and add lower 5 bits
-        let imm = ((value & imm_hi_mask) >> 20) | (value & imm_lo_mask >> 7);
+        let imm = ((value & imm_hi_mask) >> 20) | ((value & imm_lo_mask) >> 7);
 
         Ok(SType {
             // 7 bits
@@ -188,7 +188,7 @@ impl TryFrom<u32> for SType {
             // 5 bits
             rs2: ((rs2_mask & value) >> 20) as u8,
             // 7 bits (plus 5 bits)
-            imm: imm as u16,
+            imm: sign_extend(imm as u64, OrigBitWidth(12)),
         })
     }
 }
@@ -774,6 +774,104 @@ mod tests {
             Instruction::Bne(crate::BType {
                 opcode: crate::BaseOpcode::Branch,
                 imm: 596,
+                funct3: 0b001,
+                rs1: 14,
+                rs2: 7,
+            }),
+        ];
+
+        test2_function_section
+            .chunks(4)
+            .map(|inst| {
+                let num = u32::from_le_bytes(inst.try_into().unwrap());
+                Instruction::try_from(num).unwrap()
+            })
+            .zip(expected_insts.iter())
+            .for_each(|(actual, expected)| {
+                assert_eq!(actual, *expected);
+            });
+    }
+
+    #[test]
+    fn test_parse_sb() {
+        let test2_function_section =
+            get_insts_from_elf("rv64ui-p-sb", 0x190, 12).expect("error getting section from elf");
+
+        let expected_insts = [
+            Instruction::Addi(crate::IType {
+                rd: 3,
+                rs1: 0,
+                funct3: 0b000,
+                imm: 2,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::AuiPc(crate::UType {
+                rd: 2,
+                imm: 2,
+                opcode: crate::BaseOpcode::AuiPc,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 2,
+                rs1: 2,
+                funct3: 0b000,
+                imm: -404,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 1,
+                rs1: 0,
+                funct3: 0b000,
+                imm: -86,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::AuiPc(crate::UType {
+                rd: 15,
+                imm: 0,
+                opcode: crate::BaseOpcode::AuiPc,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 15,
+                rs1: 15,
+                funct3: 0b000,
+                imm: 20,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Sb(crate::SType {
+                opcode: crate::BaseOpcode::Store,
+                imm: 0,
+                funct3: 0b000,
+                rs1: 2,
+                rs2: 1,
+            }),
+            Instruction::Lb(crate::IType {
+                rd: 14,
+                rs1: 2,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::Load,
+            }),
+            Instruction::Jal(crate::JType {
+                rd: 0,
+                imm: 0x00800000,
+                opcode: crate::BaseOpcode::Jal,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 14,
+                rs1: 1,
+                funct3: 0b000,
+                imm: 0,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Addi(crate::IType {
+                rd: 7,
+                rs1: 0,
+                funct3: 0b000,
+                imm: -86,
+                opcode: crate::BaseOpcode::OpImm,
+            }),
+            Instruction::Bne(crate::BType {
+                opcode: crate::BaseOpcode::Branch,
+                imm: 1096,
                 funct3: 0b001,
                 rs1: 14,
                 rs2: 7,
