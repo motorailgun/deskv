@@ -196,7 +196,7 @@ impl TryFrom<u32> for SType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct BType {
     opcode: BaseOpcode,
-    imm: u16,
+    imm: i64,
     funct3: u8,
     rs1: u8,
     rs2: u8,
@@ -206,18 +206,19 @@ impl TryFrom<u32> for BType {
     type Error = TypeDecodeError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        // TODO: this is bugged
-        // This mask doesn't implement corret masks as written below
-        let imm_hi_mask: u32 = 0b1111_1110_0000_0000_0000_0000_0000_0000;
-        let rs2_mask: u32 = 0b0000_0001_1111_0000_0000_0000_0000_0000;
-        let rs1_mask: u32 = 0b0000_0000_0000_1111_1000_0000_0000_0000;
-        let funct3_mask: u32 = 0b0000_0000_0000_0000_0111_0000_0000_0000;
-        let imm_lo_mask: u32 = 0b0000_0000_0000_0000_0000_1111_1000_0000;
-        let opcode_mask: u32 = 0b0000_0000_0000_0000_0000_0000_0111_1111;
+        let imm_12_mask: u32   = 0b1000_0000_0000_0000_0000_0000_0000_0000;
+        let imm_10_5_mask: u32 = 0b0111_1110_0000_0000_0000_0000_0000_0000;
+        let rs2_mask: u32      = 0b0000_0001_1111_0000_0000_0000_0000_0000;
+        let rs1_mask: u32      = 0b0000_0000_0000_1111_1000_0000_0000_0000;
+        let funct3_mask: u32   = 0b0000_0000_0000_0000_0111_0000_0000_0000;
+        let imm_4_1_mask: u32  = 0b0000_0000_0000_0000_0000_1111_0000_0000;
+        let imm_11_mask: u32   = 0b0000_0000_0000_0000_0000_0000_1000_0000;
+        let opcode_mask: u32   = 0b0000_0000_0000_0000_0000_0000_0111_1111;
 
-        // TODO: this should be rewritten I guess, I need to figure out what
-        // imm[12|10:5] and imm[4:1|11] stands for
-        let imm = ((value & imm_hi_mask) >> 20) | ((value & imm_lo_mask) >> 7);
+        let imm = (imm_12_mask & value) >> 19 |
+                       (imm_11_mask & value) << 4 |
+                       (imm_10_5_mask & value) >> 20 |
+                       (imm_4_1_mask & value) >> 7;
 
         Ok(BType {
             // 7 bits
@@ -231,7 +232,7 @@ impl TryFrom<u32> for BType {
             // 5 bits
             rs2: ((rs2_mask & value) >> 20) as u8,
             // 7 bits (plus 5 bits)
-            imm: imm as u16,
+            imm: sign_extend(imm as u64, OrigBitWidth(13)),
         })
     }
 }
@@ -289,7 +290,6 @@ impl TryFrom<u32> for JType {
             opcode: BaseOpcode::from_u32(opcode_mask & value)
                 .ok_or(Self::Error::InvalidInstructionError)?,
             rd: ((rd_mask & value) >> 7) as u8,
-            // TODO: I need to figure out what imm[20|10:1|11|19:12] stands for
             imm: sign_extend(imm as u64, OrigBitWidth(20)),
         })
     }
